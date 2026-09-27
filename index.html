@@ -3,11 +3,93 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TrackBit</title>
+    <meta name="theme-color" content="#f4f3ed" />
+    <meta name="description" content="Track what you intended, what happened, and what you want to change tomorrow." />
+    <title>TrackBit | Small actions, real progress</title>
     <link rel="icon" href="/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div class="site-frame">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="TrackBit home">
+          <span class="brand-mark" aria-hidden="true">t<span>b</span></span>
+          <span>trackbit</span>
+        </a>
+        <div id="account-actions" class="account-actions" hidden>
+          <span id="account-email" class="account-email"></span>
+          <button id="sign-out" class="button button-quiet btn btn-outline-secondary" type="button">Sign out</button>
+        </div>
+      </header>
+
+      <main id="auth-view" class="auth-layout">
+        <section class="auth-intro" aria-labelledby="intro-title">
+          <p class="eyebrow">A PERSONAL FEEDBACK LOOP</p>
+          <h1 id="intro-title">Small actions.<br /><span>Real progress.</span></h1>
+          <p class="intro-copy">Notice what happened. Make tomorrow a little more intentional.</p>
+          <div class="cycle-preview" aria-label="TrackBit daily cycle">
+            <div><span class="cycle-index">01</span><span>Yesterday</span><small>Reflect</small></div>
+            <i aria-hidden="true"></i>
+            <div class="cycle-current"><span class="cycle-index">02</span><span>Today</span><small>Execute</small></div>
+            <i aria-hidden="true"></i>
+            <div><span class="cycle-index">03</span><span>Tomorrow</span><small>Adapt</small></div>
+          </div>
+        </section>
+
+        <section class="auth-panel" aria-labelledby="auth-title">
+          <div class="auth-heading">
+            <p class="eyebrow" id="auth-eyebrow">WELCOME BACK</p>
+            <h2 id="auth-title">Sign in to your space</h2>
+            <p id="auth-subtitle">Your progress is personal. Pick up where you left off.</p>
+          </div>
+          <div id="firebase-setup-warning" class="notice notice-warning" role="status" hidden>
+            Firebase is not configured yet. Add your web app settings in <code>src/firebase-config.js</code> to enable accounts and sync.
+          </div>
+          <button id="google-sign-in" class="oauth-button btn btn-outline-secondary" type="button">
+            <span class="google-mark" aria-hidden="true">G</span>
+            <span>Continue with Google</span>
+          </button>
+          <div class="auth-divider"><span>or use your email</span></div>
+          <form id="auth-form" class="form-stack">
+            <label class="field-label" for="auth-email">Email address</label>
+            <input class="text-input form-control" id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            <label class="field-label" for="auth-password">Password</label>
+            <input class="text-input form-control" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required />
+            <button id="auth-submit" class="button button-primary button-wide btn btn-primary" type="submit">Sign in <span aria-hidden="true">→</span></button>
+            <p id="auth-message" class="form-message" role="status" aria-live="polite"></p>
+          </form>
+          <p class="auth-switch"><span id="auth-switch-copy">New to TrackBit?</span> <button id="auth-mode-toggle" class="text-button btn btn-link" type="button">Create an account</button></p>
+        </section>
+      </main>
+
+      <main id="app-view" class="app-view" hidden>
+        <section class="welcome-row">
+          <div>
+            <p class="eyebrow" id="today-label"></p>
+            <h1 id="welcome-title">Your day, in bits.</h1>
+            <p class="intro-copy">Plan with intention. Learn from what actually happens.</p>
+          </div>
+          <div class="cycle-summary" aria-label="Yesterday, today, and tomorrow">
+            <span>REFLECT</span><i aria-hidden="true"></i><strong>DO</strong><i aria-hidden="true"></i><span>ADAPT</span>
+          </div>
+        </section>
+
+        <nav class="day-tabs" aria-label="Daily cycle">
+          <button class="day-tab" type="button" data-day="yesterday"><span>01</span> Yesterday</button>
+          <button class="day-tab is-active" type="button" data-day="today" aria-current="page"><span>02</span> Today</button>
+          <button class="day-tab" type="button" data-day="tomorrow"><span>03</span> Tomorrow</button>
+        </nav>
+
+        <section id="cycle-content" class="cycle-content" aria-live="polite"></section>
+        <p id="app-message" class="app-message" role="status" aria-live="polite"></p>
+      </main>
+
+      <footer class="site-footer"><span>TRACKBIT</span><span>Intention → reality → insight</span></footer>
+    </div>
+    <script type="module" src="/src/app.js"></script>
   </body>
 </html>

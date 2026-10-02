@@ -27,10 +27,13 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .site-frame { min-height: 100vh; display: flex; flex-direction: column; }
 .topbar { height: 78px; padding: 0 clamp(22px, 6vw, 92px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(32, 37, 31, 0.09); }
 .brand { color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; font: 800 20px/1 "Manrope", sans-serif; letter-spacing: 0; }
+.brand-logo { width: 100px; height: 68px; object-fit: contain; mix-blend-mode: multiply; }
 .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px 11px 11px 3px; background: var(--green); color: white; font: 800 17px/1 "Manrope", sans-serif; letter-spacing: 0; }
 .brand-mark span { color: var(--lime); }
 .account-actions { display: flex; align-items: center; gap: 16px; }
 .account-email { max-width: 260px; overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.sign-out-button { border-color: transparent; color: #914a36; }
+.sign-out-button:hover:not(:disabled) { border-color: #e6c7bd; background: #f9eee9; color: #803c2b; }
 .button { min-height: 44px; display: inline-flex; justify-content: center; align-items: center; gap: 12px; padding: 0 17px; border: 1px solid transparent; border-radius: 5px; font-size: 13px; font-weight: 700; transition: background 160ms ease, transform 160ms ease; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
 .button-primary { background: var(--green); color: white; }
@@ -155,20 +158,37 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .suggestion-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 13px; padding-top: 4px; }
 .suggestion-actions .text-button { font-size: 11px; }
 .tracking-section { margin-top: 39px; padding-top: 23px; border-top: 1px solid var(--line); }
+.task-section { margin-top: 0; padding-top: 0; border-top: 0; }
 .tracking-section .list-heading { align-items: center; }
 .tracking-section .list-heading .eyebrow { margin-bottom: 5px; font-size: 9px; }
 .tracking-section .list-heading h3 { margin: 0; font: 700 16px "Manrope", sans-serif; }
 .tracking-section .list-heading > span { color: var(--muted); font-size: 11px; }
 .task-list { display: grid; }
-.task-row { min-height: 49px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #e5e5dc; }
+.task-row { border-bottom: 1px solid #e5e5dc; }
+.task-row-main { min-height: 49px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .task-check { min-width: 0; display: flex; align-items: center; gap: 11px; cursor: pointer; }
 .task-toggle { width: 17px; height: 17px; flex: 0 0 17px; accent-color: var(--green); }
 .task-title { overflow: hidden; font-size: 13px; text-overflow: ellipsis; }
 .task-title.is-complete { color: var(--muted); text-decoration: line-through; text-decoration-color: #9aa093; }
 .delete-task { opacity: 0.72; }
 .task-row:hover .delete-task, .delete-task:focus-visible { opacity: 1; }
-.task-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; margin-top: 12px; }
+.task-entry { margin: 12px 0; }
+.task-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
 .task-form .text-input { min-height: 42px; font-size: 12px; }
+.task-form-message { min-height: 17px; margin: 5px 0 0; color: var(--muted); font-size: 11px; }
+.task-form button[aria-busy="true"] .task-submit-label::before { width: 12px; height: 12px; display: inline-block; margin-right: 8px; border: 2px solid rgba(255,255,255,.45); border-top-color: white; border-radius: 50%; content: ""; vertical-align: -2px; animation: spin 700ms linear infinite; }
+.task-reflection { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 9px; padding: 0 40px 13px 28px; }
+.task-reflection-input { min-height: 54px; resize: vertical; font-size: 12px; }
+.task-reflection .button { min-height: 36px; }
+.account-dialog { width: min(440px, calc(100% - 32px)); max-width: none; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 80px rgba(32, 37, 31, 0.24); }
+.account-dialog::backdrop { background: rgba(23, 31, 25, 0.48); backdrop-filter: blur(3px); }
+.dialog-form, .logout-dialog { padding: 27px; }
+.dialog-heading h2 { margin: 0; font: 700 23px/1.25 "Manrope", sans-serif; }
+.dialog-heading > p:last-child { margin: 8px 0 20px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.dialog-message { min-height: 17px; margin: 9px 0; color: #914a36; font-size: 12px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 10px; }
+.logout-dialog .dialog-actions { margin-top: 14px; }
+#logout-confirm[aria-busy="true"] .logout-button-label::before { width: 12px; height: 12px; display: inline-block; margin-right: 8px; border: 2px solid rgba(255,255,255,.45); border-top-color: white; border-radius: 50%; content: ""; vertical-align: -2px; animation: spin 700ms linear infinite; }
 .sleep-section { padding-bottom: 15px; }
 .sleep-form { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
 .sleep-hours-field, .sleep-quality-field { display: grid; gap: 6px; }
@@ -185,6 +205,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
 
 @keyframes pulse { to { transform: scale(1.45); opacity: 0.55; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 1000px) {
   .auth-layout { width: min(480px, calc(100% - 36px)); grid-template-columns: 1fr; gap: 28px; padding: 38px 0 48px; }
@@ -229,8 +250,9 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 }
 
 @media (max-width: 420px) {
-  .account-email { max-width: 140px; font-size: 11px; }
-  .account-actions { gap: 8px; }
+  .account-email { display: none; }
+  .account-actions { gap: 5px; }
+  .account-actions .button { min-height: 33px; padding: 0 8px; font-size: 10px; }
   .welcome-row h1 { font-size: 27px; }
   .section-heading { align-items: flex-start; }
   .day-count { min-width: 78px; padding: 5px 0 5px 8px; }
@@ -247,6 +269,9 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   .add-bit-fields > button { grid-column: 2; grid-row: 2; padding: 0 8px; }
   .task-form { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
   .task-form .button { padding: 0 10px; font-size: 11px; }
+  .task-reflection { grid-template-columns: 1fr; padding-right: 0; padding-left: 28px; }
+  .task-reflection .button { justify-self: end; }
+  .dialog-form, .logout-dialog { padding: 22px; }
   .site-footer { font-size: 8px; }
 }
 

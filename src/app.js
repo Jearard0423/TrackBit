@@ -4,6 +4,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 import {
   equalTo,
@@ -86,7 +87,66 @@ googleSignInButton.addEventListener("click", async () => {
   }
 });
 
-document.querySelector("#sign-out").addEventListener("click", () => signOut(auth));
+const profileDialog = document.querySelector("#profile-dialog");
+const logoutDialog = document.querySelector("#logout-dialog");
+
+document.querySelector("#profile-open").addEventListener("click", () => {
+  document.querySelector("#profile-name").value = getUserName(currentUser);
+  document.querySelector("#profile-email").value = currentUser?.email || "";
+  document.querySelector("#profile-message").textContent = "";
+  profileDialog.showModal();
+});
+
+document.querySelector("#profile-cancel").addEventListener("click", () => profileDialog.close());
+
+document.querySelector("#profile-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const displayName = document.querySelector("#profile-name").value.trim();
+  const saveButton = document.querySelector("#profile-save");
+  if (!displayName || !currentUser) return;
+  saveButton.disabled = true;
+  saveButton.textContent = "Saving profile...";
+  document.querySelector("#profile-message").textContent = "";
+  try {
+    await updateProfile(currentUser, { displayName });
+    document.querySelector("#welcome-title").textContent = `Your day, ${displayName.split(/[ ._-]/)[0]}.`;
+    profileDialog.close();
+    appMessage.textContent = "Profile updated.";
+  } catch (error) {
+    document.querySelector("#profile-message").textContent = "Your profile could not be updated. Please try again.";
+    console.error(error);
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = "Save profile";
+  }
+});
+
+document.querySelector("#sign-out").addEventListener("click", () => {
+  document.querySelector("#logout-message").textContent = "";
+  logoutDialog.showModal();
+});
+
+document.querySelector("#logout-cancel").addEventListener("click", () => logoutDialog.close());
+
+document.querySelector("#logout-confirm").addEventListener("click", async event => {
+  const button = event.currentTarget;
+  const label = button.querySelector(".logout-button-label");
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  label.textContent = "Signing out...";
+  document.querySelector("#logout-message").textContent = "Ending your session securely.";
+  try {
+    await signOut(auth);
+    logoutDialog.close();
+  } catch (error) {
+    document.querySelector("#logout-message").textContent = "We couldn't sign you out. Check your connection and try again.";
+    console.error(error);
+  } finally {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    label.textContent = "Sign out";
+  }
+});
 
 for (const tab of tabs) {
   tab.addEventListener("click", () => {
@@ -115,7 +175,7 @@ if (firebaseConfigured) {
     accountActions.hidden = !user;
     document.querySelector("#account-email").textContent = user?.email ?? "";
     if (user) {
-      const firstName = user.email?.split("@")[0]?.split(/[._-]/)[0] || "there";
+      const firstName = getUserName(user).split(/[ ._-]/)[0] || "there";
       document.querySelector("#welcome-title").textContent = `Your day, ${firstName}.`;
       renderCycle();
     }
@@ -134,6 +194,10 @@ function readableAuthError(code) {
     "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
   };
   return messages[code] || "We couldn't complete that request. Please try again.";
+}
+
+function getUserName(user) {
+  return user?.displayName?.trim() || user?.email?.split("@")[0]?.split(/[._-]/)[0] || "there";
 }
 
 function dateKey(date) {
@@ -163,8 +227,18 @@ function bitsRef() {
 }
 
 async function getEntries(node, date) {
-  const snapshot = await get(query(ref(db, userPath(node)), orderByChild("date"), equalTo(dateKey(date))));
-  return Object.entries(snapshot.val() || {}).map(([id, entry]) => ({ id, ...entry }));
+  const entriesRef = ref(db, userPath(node));
+  try {
+    const snapshot = await get(query(entriesRef, orderByChild("date"), equalTo(dateKey(date))));
+    return Object.entries(snapshot.val() || {}).map(([id, entry]) => ({ id, ...entry }));
+  } catch (error) {
+    if (!/index not defined/i.test(error?.message || "")) throw error;
+    console.warn(`Missing date index for ${node}; filtering this user's records locally. Publish database.rules.json to restore indexed reads.`);
+    const snapshot = await get(entriesRef);
+    return Object.entries(snapshot.val() || {})
+      .filter(([, entry]) => entry.date === dateKey(date))
+      .map(([id, entry]) => ({ id, ...entry }));
+  }
 }
 
 async function getSleep(date) {
@@ -200,14 +274,14 @@ async function renderCycle() {
         <div class="day-count"><strong>${completed}<span> / </span>${bits.length}</strong><small>Bits on track</small></div>
       </div>
       ${selectedDay === "tomorrow" ? '<section id="insight-panel" class="insight-panel"><div class="insight-heading"><span class="insight-spark" aria-hidden="true">✳</span><div><p class="eyebrow">YOUR PERSONAL REVIEW</p><h3>Make sense of your last seven days.</h3><p class="insight-copy">TrackBit will share your recent Bits, tasks, and sleep log with Google Gemini only when you request an analysis.</p><button id="run-analysis" class="button button-primary btn btn-primary" type="button">Analyze my progress <span aria-hidden="true">→</span></button><p id="analysis-message" class="analysis-message" role="status" aria-live="polite"></p></div></div><div id="analysis-result"></div></section>' : ""}
+      <section class="tracking-section task-section">
+        <div class="list-heading"><div><p class="eyebrow">THE REST OF YOUR DAY</p><h3>${selectedDay === "yesterday" ? "Yesterday's tasks" : selectedDay === "tomorrow" ? "Tomorrow's tasks" : "Today's tasks"}</h3></div><span>${tasks.filter(task => task.completed).length} of ${tasks.length} done</span></div>
+        ${taskForm()}
+        <div class="task-list">${tasks.length ? tasks.map(taskCard).join("") : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">+</span><p>No tasks yet. Add one above to make it easy to find.</p></div>'}</div>
+      </section>
       <section class="bits-section">
         <div class="list-heading"><h3>${selectedDay === "yesterday" ? "Yesterday's Bits" : selectedDay === "tomorrow" ? "Tomorrow's plan" : "Today's Bits"}</h3><span>${bits.length ? `${bits.length} ${bits.length === 1 ? "action" : "actions"}` : "A clean slate"}</span></div>
         <div id="bits-list" class="bits-list">${bits.length ? bits.map(bit => bitCard(bit, selectedDay === "yesterday")).join("") : emptyState(selectedDay)}</div>
-      </section>
-      <section class="tracking-section">
-        <div class="list-heading"><div><p class="eyebrow">THE REST OF YOUR DAY</p><h3>${selectedDay === "yesterday" ? "Yesterday's tasks" : selectedDay === "tomorrow" ? "Tomorrow's tasks" : "Today's tasks"}</h3></div><span>${tasks.filter(task => task.completed).length} of ${tasks.length} done</span></div>
-        <div class="task-list">${tasks.length ? tasks.map(taskCard).join("") : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">+</span><p>No tasks on this date yet. Add one small next action.</p></div>'}</div>
-        ${taskForm()}
       </section>
       <section class="tracking-section sleep-section">
         <div class="list-heading"><div><p class="eyebrow">REST IS PART OF PROGRESS</p><h3>${selectedDay === "tomorrow" ? "Plan your sleep" : `${dayLabel}'s sleep`}</h3></div>${sleep?.hours !== undefined ? `<span>${formatAmount(sleep.hours)} hours recorded</span>` : ""}</div>
@@ -222,13 +296,33 @@ async function renderCycle() {
     bindSleepForm(dayDate);
     document.querySelector("#plan-today")?.addEventListener("click", () => tabs[1].click());
     document.querySelector("#run-analysis")?.addEventListener("click", () => loadProgressAnalysis(dayDate));
+    return true;
   } catch (error) {
-    const message = isDatabasePermissionError(error)
-      ? "Realtime Database denied access. Publish the owner-only rules from database.rules.json in Firebase Console → Realtime Database → Rules, then reload."
-      : "We could not load your Bits. Check your connection and Firebase setup, then try again.";
-    cycleContent.innerHTML = `<div class="notice notice-error" role="alert">${escapeHtml(message)}</div>`;
+    const message = databaseReadErrorMessage(error);
+    cycleContent.innerHTML = `
+      <div class="notice notice-error" role="alert">${escapeHtml(message)}</div>
+      <section class="tracking-section task-section">
+        <div class="list-heading"><div><p class="eyebrow">THE REST OF YOUR DAY</p><h3>${escapeHtml(dayLabel)}'s tasks</h3></div></div>
+        ${taskForm()}
+        <div class="empty-state"><span class="empty-mark" aria-hidden="true">!</span><p>Task history is unavailable until the Firebase data issue above is fixed.</p></div>
+      </section>`;
+    bindTaskControls(dayDate);
     console.error(error);
+    return false;
   }
+}
+
+function databaseReadErrorMessage(error) {
+  if (isDatabasePermissionError(error)) {
+    return "Realtime Database denied access. Publish the owner-only rules from database.rules.json in Firebase Console → Realtime Database → Rules, then reload.";
+  }
+  if (/index not defined/i.test(error?.message || "")) {
+    return "Firebase is missing the date indexes. Publish database.rules.json in Firebase Console → Realtime Database → Rules, then reload.";
+  }
+  const detail = error?.message || error?.code;
+  return detail
+    ? `We could not load your data: ${detail}`
+    : "We could not load your data. Check your connection and Firebase setup, then try again.";
 }
 
 function isDatabasePermissionError(error) {
@@ -271,11 +365,11 @@ function addBitForm() {
 }
 
 function taskCard(task) {
-  return `<article class="task-row" data-task-id="${escapeHtml(task.id)}"><label class="task-check"><input class="task-toggle" type="checkbox" ${task.completed ? "checked" : ""} aria-label="Mark ${escapeHtml(task.title)} ${task.completed ? "incomplete" : "complete"}" /><span class="task-title ${task.completed ? "is-complete" : ""}">${escapeHtml(task.title)}</span></label><button class="icon-button delete-task btn btn-outline-danger" type="button" aria-label="Delete ${escapeHtml(task.title)}" title="Delete task">×</button></article>`;
+  return `<article class="task-row ${task.completed ? "task-row-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-row-main"><label class="task-check"><input class="task-toggle" type="checkbox" ${task.completed ? "checked" : ""} aria-label="Mark ${escapeHtml(task.title)} ${task.completed ? "incomplete" : "complete"}" /><span class="task-title ${task.completed ? "is-complete" : ""}">${escapeHtml(task.title)}</span></label><button class="icon-button delete-task btn btn-outline-danger" type="button" aria-label="Delete ${escapeHtml(task.title)}" title="Delete task">×</button></div>${task.completed ? `<div class="task-reflection"><label class="sr-only" for="task-reflection-${escapeHtml(task.id)}">Reflection for ${escapeHtml(task.title)}</label><textarea id="task-reflection-${escapeHtml(task.id)}" class="text-input form-control task-reflection-input" rows="2" maxlength="500" placeholder="What helped you get this done? What did you learn?">${escapeHtml(task.reflection || "")}</textarea><button class="button button-small save-task-reflection btn btn-warning" type="button">Save reflection</button></div>` : ""}</article>`;
 }
 
 function taskForm() {
-  return `<form id="add-task-form" class="task-form"><label class="sr-only" for="task-title">New task</label><input id="task-title" class="text-input form-control" name="title" maxlength="120" placeholder="Add a task for this day" required /><button class="button button-primary btn btn-primary" type="submit">Add task <span aria-hidden="true">+</span></button></form>`;
+  return `<div class="task-entry"><form id="add-task-form" class="task-form"><label class="sr-only" for="task-title">New task</label><input id="task-title" class="text-input form-control" name="title" maxlength="120" placeholder="What do you want to get done?" required /><button class="button button-primary btn btn-primary" type="submit"><span class="task-submit-label"><span aria-hidden="true">+</span> Add task</span></button></form><p id="task-form-message" class="task-form-message" role="status" aria-live="polite"></p></div>`;
 }
 
 function sleepForm(sleep) {
@@ -355,10 +449,23 @@ function bindBitCards() {
 
 function bindTaskControls(dayDate) {
   const form = document.querySelector("#add-task-form");
+  const input = form.elements.title;
+  const submitButton = form.querySelector("button[type='submit']");
+  const submitLabel = submitButton.querySelector(".task-submit-label");
+  const formMessage = document.querySelector("#task-form-message");
   form.addEventListener("submit", async event => {
     event.preventDefault();
-    const title = String(new FormData(form).get("title")).trim();
-    if (!title) return;
+    const title = input.value.trim();
+    if (!title) {
+      input.setCustomValidity("Enter a task name.");
+      input.reportValidity();
+      return;
+    }
+    input.setCustomValidity("");
+    submitButton.disabled = true;
+    submitButton.setAttribute("aria-busy", "true");
+    submitLabel.textContent = "Adding task...";
+    formMessage.textContent = "Saving your task.";
     try {
       await set(push(ref(db, userPath("tasks"))), {
         title,
@@ -366,10 +473,20 @@ function bindTaskControls(dayDate) {
         completed: false,
         createdAt: serverTimestamp(),
       });
-      renderCycle();
+      const dashboardLoaded = await renderCycle();
+      if (!dashboardLoaded) {
+        document.querySelector("#task-form-message").textContent = "Task saved. Fix the Firebase data issue above to load your task history.";
+      }
     } catch (error) {
-      appMessage.textContent = "That task could not be saved. Try again.";
+      const detail = error?.message || error?.code;
+      formMessage.textContent = isDatabasePermissionError(error)
+        ? "Firebase denied this task. Publish the owner-only rules from database.rules.json in Realtime Database settings, then retry."
+        : detail ? `Task could not be saved: ${detail}` : "Task could not be saved. Check your connection and try again.";
       console.error(error);
+    } finally {
+      submitButton.disabled = false;
+      submitButton.removeAttribute("aria-busy");
+      submitLabel.innerHTML = '<span aria-hidden="true">+</span> Add task';
     }
   });
 
@@ -394,6 +511,25 @@ function bindTaskControls(dayDate) {
       } catch (error) {
         appMessage.textContent = "That task could not be removed. Try again.";
         console.error(error);
+      }
+    });
+    row.querySelector(".save-task-reflection")?.addEventListener("click", async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = "Saving...";
+      try {
+        await update(taskRef, {
+          reflection: row.querySelector(".task-reflection-input").value.trim(),
+          reflectionUpdatedAt: serverTimestamp(),
+        });
+        appMessage.textContent = "Task reflection saved.";
+        button.textContent = "Saved";
+      } catch (error) {
+        appMessage.textContent = "Your task reflection could not be saved. Try again.";
+        button.textContent = "Save reflection";
+        console.error(error);
+      } finally {
+        button.disabled = false;
       }
     });
   });

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f4f3ed" />
     <meta name="description" content="Track what you intended, what happened, and what you want to change tomorrow." />
     <title>TrackBit | Small actions, real progress</title>
-    <link rel="icon" href="/logo.png" />
+    <link rel="icon" type="image/jpeg" href="/trackbit.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -17,12 +17,12 @@
     <div class="site-frame">
       <header class="topbar">
         <a class="brand" href="/" aria-label="TrackBit home">
-          <span class="brand-mark" aria-hidden="true">t<span>b</span></span>
-          <span>trackbit</span>
+          <img class="brand-logo" src="/trackbit.jpg" alt="TrackBit" />
         </a>
         <div id="account-actions" class="account-actions" hidden>
           <span id="account-email" class="account-email"></span>
-          <button id="sign-out" class="button button-quiet btn btn-outline-secondary" type="button">Sign out</button>
+          <button id="profile-open" class="button button-quiet btn btn-outline-secondary" type="button">Edit profile</button>
+          <button id="sign-out" class="button button-quiet sign-out-button btn btn-outline-secondary" type="button"><span aria-hidden="true">↪</span> Sign out</button>
         </div>
       </header>
 
@@ -87,6 +87,24 @@
         <section id="cycle-content" class="cycle-content" aria-live="polite"></section>
         <p id="app-message" class="app-message" role="status" aria-live="polite"></p>
       </main>
+
+      <dialog id="profile-dialog" class="account-dialog" aria-labelledby="profile-title">
+        <form id="profile-form" class="dialog-form">
+          <div class="dialog-heading"><p class="eyebrow">YOUR ACCOUNT</p><h2 id="profile-title">Edit profile</h2><p>Choose the name you want TrackBit to use when it greets you.</p></div>
+          <label class="field-label" for="profile-name">Display name</label>
+          <input id="profile-name" class="text-input form-control" name="displayName" maxlength="60" autocomplete="name" required />
+          <label class="field-label" for="profile-email">Email address</label>
+          <input id="profile-email" class="text-input form-control" type="email" readonly />
+          <p id="profile-message" class="dialog-message" role="status" aria-live="polite"></p>
+          <div class="dialog-actions"><button id="profile-cancel" class="button button-quiet btn btn-outline-secondary" type="button">Cancel</button><button id="profile-save" class="button button-primary btn btn-primary" type="submit">Save profile</button></div>
+        </form>
+      </dialog>
+
+      <dialog id="logout-dialog" class="account-dialog logout-dialog" aria-labelledby="logout-title">
+        <div class="dialog-heading"><p class="eyebrow">LEAVE TRACKBIT</p><h2 id="logout-title">Sign out?</h2><p>Your progress is saved to your account. You can sign back in any time.</p></div>
+        <p id="logout-message" class="dialog-message" role="status" aria-live="polite"></p>
+        <div class="dialog-actions"><button id="logout-cancel" class="button button-quiet btn btn-outline-secondary" type="button">Stay signed in</button><button id="logout-confirm" class="button button-primary btn btn-primary" type="button"><span class="logout-button-label">Sign out</span></button></div>
+      </dialog>
 
       <footer class="site-footer"><span>TRACKBIT</span><span>Intention → reality → insight</span></footer>
     </div>

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f4f3ed" />
     <meta name="description" content="Track what you intended, what happened, and what you want to change tomorrow." />
     <title>TrackBit | Small actions, real progress</title>
-    <link rel="icon" type="image/jpeg" href="/trackbit.jpg" />
+    <link rel="icon" type="image/png" href="/trackbit-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -17,7 +17,7 @@
     <div class="site-frame">
       <header class="topbar">
         <a class="brand" href="/" aria-label="TrackBit home">
-          <img class="brand-logo" src="/trackbit.jpg" alt="TrackBit" />
+          <span class="brand-logo-window"><img class="brand-logo" src="/trackbit-logo.png" alt="TrackBit" /></span>
         </a>
         <div id="account-actions" class="account-actions" hidden>
           <span id="account-email" class="account-email"></span>
@@ -50,16 +50,38 @@
             Firebase is not configured yet. Add your web app settings in <code>src/firebase-config.js</code> to enable accounts and sync.
           </div>
           <button id="google-sign-in" class="oauth-button btn btn-outline-secondary" type="button">
-            <span class="google-mark" aria-hidden="true">G</span>
-            <span>Continue with Google</span>
+            <svg class="google-mark" aria-hidden="true" viewBox="0 0 48 48">
+              <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11c-.5 2.5-2 4.6-4.2 6v5h6.8c4-3.7 6-8.8 6-14.7z" />
+              <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.8-5c-1.8 1.2-4 1.9-6.7 1.9-5.2 0-9.6-3.5-11.2-8.2H5.8v5.2C9.2 39.6 16 44 24 44z" />
+              <path fill="#FBBC05" d="M12.8 27.9a12 12 0 0 1 0-7.8v-5.2H5.8a20 20 0 0 0 0 18.2l7-5.2z" />
+              <path fill="#EA4335" d="M24 11.9c3 0 5.7 1 7.8 3.1l5.9-5.9C34.1 5.8 29.5 4 24 4 16 4 9.2 8.4 5.8 14.9l7 5.2c1.6-4.7 6-8.2 11.2-8.2z" />
+            </svg>
+            <span class="auth-action-label">Continue with Google</span>
+            <span class="auth-spinner" aria-hidden="true"></span>
           </button>
           <div class="auth-divider"><span>or use your email</span></div>
           <form id="auth-form" class="form-stack">
             <label class="field-label" for="auth-email">Email address</label>
             <input class="text-input form-control" id="auth-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
             <label class="field-label" for="auth-password">Password</label>
-            <input class="text-input form-control" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required />
-            <button id="auth-submit" class="button button-primary button-wide btn btn-primary" type="submit">Sign in <span aria-hidden="true">→</span></button>
+            <div class="password-field">
+              <input class="text-input form-control" id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required />
+              <button id="password-visibility" class="password-visibility" type="button" aria-label="Show password" aria-pressed="false">
+                <svg class="password-eye" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+                <svg class="password-eye-off" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden>
+                  <path d="m3 3 18 18M10.6 6.2A10.5 10.5 0 0 1 12 6c6.1 0 9.5 6 9.5 6a16 16 0 0 1-3.2 3.7M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.4 6 9.5 6c1.1 0 2.1-.2 3-.5" />
+                  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                </svg>
+              </button>
+            </div>
+            <button id="auth-submit" class="button button-primary button-wide btn btn-primary" type="submit">
+              <span id="auth-submit-label" class="auth-action-label">Sign in</span>
+              <span class="auth-submit-arrow" aria-hidden="true">→</span>
+              <span class="auth-spinner" aria-hidden="true"></span>
+            </button>
             <p id="auth-message" class="form-message" role="status" aria-live="polite"></p>
           </form>
           <p class="auth-switch"><span id="auth-switch-copy">New to TrackBit?</span> <button id="auth-mode-toggle" class="text-button btn btn-link" type="button">Create an account</button></p>

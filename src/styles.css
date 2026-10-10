@@ -27,7 +27,8 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .site-frame { min-height: 100vh; display: flex; flex-direction: column; }
 .topbar { height: 78px; padding: 0 clamp(22px, 6vw, 92px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(32, 37, 31, 0.09); }
 .brand { color: var(--ink); text-decoration: none; display: inline-flex; align-items: center; gap: 10px; font: 800 20px/1 "Manrope", sans-serif; letter-spacing: 0; }
-.brand-logo { width: 100px; height: 68px; object-fit: contain; mix-blend-mode: multiply; }
+.brand-logo-window { width: 78px; height: 64px; display: flex; flex: 0 0 78px; align-items: center; justify-content: center; overflow: hidden; }
+.brand-logo { width: auto; max-width: none; height: 60px; }
 .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px 11px 11px 3px; background: var(--green); color: white; font: 800 17px/1 "Manrope", sans-serif; letter-spacing: 0; }
 .brand-mark span { color: var(--lime); }
 .account-actions { display: flex; align-items: center; gap: 16px; }
@@ -58,7 +59,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .auth-heading > p:last-child { margin: 8px 0 25px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .oauth-button { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 11px; border-color: var(--line); border-radius: 4px; background: white; color: var(--ink); font-size: 13px; font-weight: 600; }
 .oauth-button:hover:not(:disabled) { border-color: #b8beb1; background: #f8f8f4; color: var(--ink); }
-.google-mark { font: 700 17px/1 "Manrope", sans-serif; color: #4285f4; }
+.google-mark { width: 18px; height: 18px; flex: 0 0 18px; }
 .auth-divider { display: flex; align-items: center; gap: 12px; margin: 17px 0; color: var(--muted); font-size: 10px; }
 .auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: var(--line); content: ""; }
 .form-stack { display: flex; flex-direction: column; gap: 9px; }
@@ -66,6 +67,16 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .text-input { width: 100%; min-height: 43px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; outline: none; background: var(--surface); color: var(--ink); font-size: 13px; }
 .text-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(40, 92, 67, 0.1); }
 .text-input::placeholder { color: #a0a397; }
+.password-field { position: relative; }
+.password-field .text-input { padding-right: 45px; }
+.password-visibility { position: absolute; top: 50%; right: 5px; width: 34px; height: 34px; display: grid; place-items: center; transform: translateY(-50%); border: 0; border-radius: 4px; background: transparent; color: var(--muted); }
+.password-visibility:hover { background: var(--soft-green); color: var(--green); }
+.password-visibility:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.password-visibility svg { width: 18px; height: 18px; }
+.auth-spinner { width: 15px; height: 15px; display: none; flex: 0 0 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: auth-spinner-rotate 700ms linear infinite; }
+.is-loading .auth-spinner { display: inline-block; }
+.button.is-loading .auth-submit-arrow { display: none; }
+@keyframes auth-spinner-rotate { to { transform: rotate(360deg); } }
 .auth-switch { margin: 20px 0 0; text-align: center; color: var(--muted); font-size: 12px; }
 .text-button { padding: 0; border: 0; background: none; color: var(--green); font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .form-message { min-height: 17px; margin: 0; color: #a34432; font-size: 12px; }
@@ -173,10 +184,14 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .delete-task { opacity: 0.72; }
 .task-row:hover .delete-task, .delete-task:focus-visible { opacity: 1; }
 .task-entry { margin: 12px 0; }
-.task-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
+.task-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 250px) auto; align-items: end; gap: 9px; }
 .task-form .text-input { min-height: 42px; font-size: 12px; }
+.task-due-field { display: grid; gap: 4px; }
+.task-due-field > span, .task-due-field > small { color: var(--muted); font-size: 9px; }
+.task-due-field .text-input { min-width: 0; }
 .task-form-message { min-height: 17px; margin: 5px 0 0; color: var(--muted); font-size: 11px; }
 .task-form button[aria-busy="true"] .task-submit-label::before { width: 12px; height: 12px; display: inline-block; margin-right: 8px; border: 2px solid rgba(255,255,255,.45); border-top-color: white; border-radius: 50%; content: ""; vertical-align: -2px; animation: spin 700ms linear infinite; }
+.task-due { display: block; margin: 0 0 9px 28px; color: var(--muted); font-size: 10px; }
 .task-reflection { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 9px; padding: 0 40px 13px 28px; }
 .task-reflection-input { min-height: 54px; resize: vertical; font-size: 12px; }
 .task-reflection .button { min-height: 36px; }
@@ -190,6 +205,15 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .logout-dialog .dialog-actions { margin-top: 14px; }
 #logout-confirm[aria-busy="true"] .logout-button-label::before { width: 12px; height: 12px; display: inline-block; margin-right: 8px; border: 2px solid rgba(255,255,255,.45); border-top-color: white; border-radius: 50%; content: ""; vertical-align: -2px; animation: spin 700ms linear infinite; }
 .sleep-section { padding-bottom: 15px; }
+.sleep-chart { margin: 16px 0 20px; padding: 14px 16px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+.sleep-chart-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sleep-chart-heading h4 { margin: 0; font: 700 12px "Manrope", sans-serif; }
+.sleep-chart-heading p { margin: 0; color: var(--muted); font-size: 10px; }
+.sleep-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.sleep-chart-grid { stroke: #e8e9e1; stroke-width: 1; }
+.sleep-chart-axis { fill: var(--muted); font: 10px "DM Sans", sans-serif; }
+.sleep-chart-point { fill: var(--green); stroke: var(--surface); stroke-width: 2; }
+.sleep-chart-empty { margin: 10px 0 2px; color: var(--muted); font-size: 11px; }
 .sleep-form { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; }
 .sleep-hours-field, .sleep-quality-field { display: grid; gap: 6px; }
 .sleep-hours-field > span:first-child, .sleep-quality-field > span { color: var(--muted); font-size: 9px; font-weight: 700; }
@@ -198,6 +222,9 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .sleep-input-wrap small { color: var(--muted); font-size: 11px; }
 .sleep-quality-field .text-input { width: 110px; }
 .sleep-form .button { min-height: 42px; }
+.history-date-control { display: grid; gap: 5px; }
+.history-date-control span { color: var(--muted); font-size: 10px; font-weight: 600; }
+.history-date-control input { width: 160px; min-height: 36px; padding: 6px 8px; }
 .loading-state { min-height: 100px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 12px; }
 .loading-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); animation: pulse 950ms ease-in-out infinite alternate; }
 .site-footer { min-height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(22px, 6vw, 92px); border-top: 1px solid rgba(32, 37, 31, 0.09); color: #8c9084; font-size: 9px; letter-spacing: 0; }
@@ -231,6 +258,8 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   .day-tab span { font-size: 9px; }
   .cycle-content { padding-top: 29px; }
   .section-heading h2 { font-size: 21px; }
+  .task-form { grid-template-columns: minmax(0, 1fr); }
+  .task-form .button { justify-self: start; }
   .bit-main { grid-template-columns: 30px minmax(0, 1fr) 100px 30px; gap: 9px; padding: 12px; }
   .bit-progress { display: none; }
   .actual-input { width: 50px; }
@@ -267,7 +296,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   .add-bit-fields { grid-template-columns: minmax(0, 1fr) 70px; }
   .unit-input { grid-column: 1; }
   .add-bit-fields > button { grid-column: 2; grid-row: 2; padding: 0 8px; }
-  .task-form { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .task-form { grid-template-columns: minmax(0, 1fr); }
   .task-form .button { padding: 0 10px; font-size: 11px; }
   .task-reflection { grid-template-columns: 1fr; padding-right: 0; padding-left: 28px; }
   .task-reflection .button { justify-self: end; }

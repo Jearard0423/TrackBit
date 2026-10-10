@@ -10,10 +10,13 @@ import {
   equalTo,
   get,
   orderByChild,
+  orderByKey,
   push,
   query,
   ref,
   remove,
+  startAt,
+  endAt,
   serverTimestamp,
   set,
   update,
@@ -27,6 +30,10 @@ const authForm = document.querySelector("#auth-form");
 const authMessage = document.querySelector("#auth-message");
 const authModeToggle = document.querySelector("#auth-mode-toggle");
 const googleSignInButton = document.querySelector("#google-sign-in");
+const authSubmitButton = document.querySelector("#auth-submit");
+const authSubmitLabel = document.querySelector("#auth-submit-label");
+const passwordInput = document.querySelector("#auth-password");
+const passwordVisibilityButton = document.querySelector("#password-visibility");
 const appMessage = document.querySelector("#app-message");
 const cycleContent = document.querySelector("#cycle-content");
 const setupWarning = document.querySelector("#firebase-setup-warning");
@@ -35,6 +42,7 @@ const tabs = [...document.querySelectorAll(".day-tab")];
 let registerMode = false;
 let currentUser = null;
 let selectedDay = "today";
+let historicalDate = null;
 
 authModeToggle.addEventListener("click", () => {
   registerMode = !registerMode;
@@ -43,13 +51,20 @@ authModeToggle.addEventListener("click", () => {
   document.querySelector("#auth-subtitle").textContent = registerMode
     ? "Make room for small actions and honest reflection."
     : "Your progress is personal. Pick up where you left off.";
-  document.querySelector("#auth-password").autocomplete = registerMode ? "new-password" : "current-password";
-  document.querySelector("#auth-submit").innerHTML = registerMode
-    ? 'Create account <span aria-hidden="true">→</span>'
-    : 'Sign in <span aria-hidden="true">→</span>';
+  passwordInput.autocomplete = registerMode ? "new-password" : "current-password";
+  authSubmitLabel.textContent = registerMode ? "Create account" : "Sign in";
   document.querySelector("#auth-switch-copy").textContent = registerMode ? "Already have an account?" : "New to TrackBit?";
   authModeToggle.textContent = registerMode ? "Sign in" : "Create an account";
   authMessage.textContent = "";
+});
+
+passwordVisibilityButton.addEventListener("click", () => {
+  const isVisible = passwordInput.type === "text";
+  passwordInput.type = isVisible ? "password" : "text";
+  passwordVisibilityButton.setAttribute("aria-pressed", String(!isVisible));
+  passwordVisibilityButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
+  passwordVisibilityButton.querySelector(".password-eye").hidden = !isVisible;
+  passwordVisibilityButton.querySelector(".password-eye-off").hidden = isVisible;
 });
 
 authForm.addEventListener("submit", async event => {
@@ -58,8 +73,7 @@ authForm.addEventListener("submit", async event => {
 
   const email = authForm.elements.email.value.trim();
   const password = authForm.elements.password.value;
-  const button = document.querySelector("#auth-submit");
-  button.disabled = true;
+  setAuthLoading(true, authSubmitButton);
   authMessage.textContent = "";
 
   try {
@@ -71,19 +85,19 @@ authForm.addEventListener("submit", async event => {
   } catch (error) {
     authMessage.textContent = readableAuthError(error.code);
   } finally {
-    button.disabled = false;
+    setAuthLoading(false, authSubmitButton);
   }
 });
 
 googleSignInButton.addEventListener("click", async () => {
-  googleSignInButton.disabled = true;
+  setAuthLoading(true, googleSignInButton);
   authMessage.textContent = "";
   try {
     await signInWithPopup(auth, provider);
   } catch (error) {
     authMessage.textContent = readableAuthError(error.code);
   } finally {
-    googleSignInButton.disabled = false;
+    setAuthLoading(false, googleSignInButton);
   }
 });
 
@@ -151,6 +165,7 @@ document.querySelector("#logout-confirm").addEventListener("click", async event 
 for (const tab of tabs) {
   tab.addEventListener("click", () => {
     selectedDay = tab.dataset.day;
+    historicalDate = null;
     tabs.forEach(item => {
       const active = item === tab;
       item.classList.toggle("is-active", active);
@@ -196,6 +211,24 @@ function readableAuthError(code) {
   return messages[code] || "We couldn't complete that request. Please try again.";
 }
 
+function setAuthLoading(isLoading, activeButton) {
+  authSubmitButton.disabled = isLoading || !firebaseConfigured;
+  googleSignInButton.disabled = isLoading || !firebaseConfigured;
+  authModeToggle.disabled = isLoading;
+  activeButton.classList.toggle("is-loading", isLoading);
+  activeButton.setAttribute("aria-busy", String(isLoading));
+
+  if (activeButton === authSubmitButton) {
+    authSubmitLabel.textContent = isLoading
+      ? (registerMode ? "Creating account…" : "Signing in…")
+      : (registerMode ? "Create account" : "Sign in");
+  } else {
+    activeButton.querySelector(".auth-action-label").textContent = isLoading
+      ? "Connecting to Google…"
+      : "Continue with Google";
+  }
+}
+
 function getUserName(user) {
   return user?.displayName?.trim() || user?.email?.split("@")[0]?.split(/[._-]/)[0] || "there";
 }
@@ -208,9 +241,16 @@ function dateKey(date) {
 }
 
 function dateFor(day) {
+  if (day === "yesterday" && historicalDate) return new Date(historicalDate);
   const date = new Date();
   date.setHours(12, 0, 0, 0);
   date.setDate(date.getDate() + ({ yesterday: -1, today: 0, tomorrow: 1 }[day] ?? 0));
+  return date;
+}
+
+function latestPastDate() {
+  const date = dateFor("today");
+  date.setDate(date.getDate() - 1);
   return date;
 }
 
@@ -246,6 +286,64 @@ async function getSleep(date) {
   return snapshot.exists() ? snapshot.val() : null;
 }
 
+async function getSleepHistory(endDate) {
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - 13);
+  const snapshot = await get(query(
+    ref(db, userPath("sleep")),
+    orderByKey(),
+    startAt(dateKey(startDate)),
+    endAt(dateKey(endDate)),
+  ));
+  return Object.entries(snapshot.val() || {})
+    .map(([date, entry]) => ({
+      date,
+      hours: entry?.hours === null || entry?.hours === undefined ? Number.NaN : Number(entry.hours),
+    }))
+    .filter(entry => Number.isFinite(entry.hours) && entry.hours >= 0 && entry.hours <= 24);
+}
+
+function sleepChart(entries, endDate) {
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - 13);
+  const days = Array.from({ length: 14 }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    return date;
+  });
+  const heading = `<div class="sleep-chart-heading"><h4>Sleep over the last 14 days</h4><p>${entries.length} ${entries.length === 1 ? "night" : "nights"} logged</p></div>`;
+  if (!entries.length) {
+    return `<div class="sleep-chart">${heading}<p class="sleep-chart-empty">Log your sleep to see your hours over time.</p></div>`;
+  }
+
+  const width = 720;
+  const height = 198;
+  const left = 44;
+  const right = 704;
+  const top = 16;
+  const bottom = 158;
+  const maxHours = Math.max(12, Math.ceil(Math.max(...entries.map(entry => entry.hours)) / 2) * 2);
+  const y = hours => bottom - (hours / maxHours) * (bottom - top);
+  const x = index => left + (index / (days.length - 1)) * (right - left);
+  const grid = [0, 1, 2, 3].map(index => {
+    const hours = maxHours * index / 3;
+    const position = y(hours);
+    return `<line class="sleep-chart-grid" x1="${left}" y1="${position}" x2="${right}" y2="${position}" /><text class="sleep-chart-axis" x="${left - 9}" y="${position + 3}" text-anchor="end">${formatAmount(hours)}</text>`;
+  }).join("");
+  const labels = [0, 4, 9, 13].map(index => {
+    const date = days[index];
+    return `<text class="sleep-chart-axis" x="${x(index)}" y="${bottom + 22}" text-anchor="middle">${escapeHtml(new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date))}</text>`;
+  }).join("");
+  const points = entries.map(entry => {
+    const dayIndex = days.findIndex(date => dateKey(date) === entry.date);
+    if (dayIndex < 0) return "";
+    const date = new Date(`${entry.date}T12:00:00`);
+    const tooltip = `${formatDate(date)}: ${formatAmount(entry.hours)} hours`;
+    return `<circle class="sleep-chart-point" cx="${x(dayIndex)}" cy="${y(entry.hours)}" r="6"><title>${escapeHtml(tooltip)}</title></circle>`;
+  }).join("");
+  return `<div class="sleep-chart">${heading}<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Scatter plot of sleep hours for the last 14 days">${grid}${labels}${points}</svg></div>`;
+}
+
 async function renderCycle() {
   if (!currentUser) return;
   const dayDate = dateFor(selectedDay);
@@ -255,36 +353,43 @@ async function renderCycle() {
   cycleContent.innerHTML = `<div class="loading-state"><span class="loading-dot"></span>Gathering your Bits</div>`;
 
   try {
-    const [bits, tasks, sleep] = await Promise.all([
+    const sleepHistoryEnd = selectedDay === "tomorrow" ? dateFor("today") : dayDate;
+    const [bits, tasks, sleep, sleepHistory] = await Promise.all([
       getEntries("bits", dayDate),
       getEntries("tasks", dayDate),
       getSleep(dayDate),
+      getSleepHistory(sleepHistoryEnd),
     ]);
+    const historyLabel = selectedDay === "yesterday"
+      ? (dateKey(dayDate) === dateKey(latestPastDate()) ? "Yesterday" : formatDate(dayDate))
+      : dayLabel;
     const completed = bits.filter(bit => Number(bit.actualAmount) >= Number(bit.plannedAmount)).length;
     const heading = selectedDay === "yesterday" ? "Notice what happened." : selectedDay === "today" ? "Make today count." : "Set up a kinder tomorrow.";
     const subheading = selectedDay === "yesterday"
-      ? "Progress is information, not a verdict."
+      ? "Review what happened, note what you learned, and browse earlier days."
       : selectedDay === "today"
         ? "Small, measurable actions are enough."
         : "Use recent experience to choose a realistic next step.";
 
     cycleContent.innerHTML = `
       <div class="section-heading">
-        <div><p class="eyebrow">${escapeHtml(dayLabel.toUpperCase())} / ${escapeHtml(formatDate(dayDate).toUpperCase())}</p><h2>${heading}</h2><p>${subheading}</p></div>
+        <div><p class="eyebrow">${escapeHtml(historyLabel.toUpperCase())} / ${escapeHtml(formatDate(dayDate).toUpperCase())}</p><h2>${heading}</h2><p>${subheading}</p></div>
         <div class="day-count"><strong>${completed}<span> / </span>${bits.length}</strong><small>Bits on track</small></div>
       </div>
+      ${selectedDay === "yesterday" ? `<label class="history-date-control" for="history-date"><span>Browse a previous day</span><input id="history-date" class="text-input form-control" type="date" max="${dateKey(latestPastDate())}" value="${dateKey(dayDate)}" /></label>` : ""}
       ${selectedDay === "tomorrow" ? '<section id="insight-panel" class="insight-panel"><div class="insight-heading"><span class="insight-spark" aria-hidden="true">✳</span><div><p class="eyebrow">YOUR PERSONAL REVIEW</p><h3>Make sense of your last seven days.</h3><p class="insight-copy">TrackBit will share your recent Bits, tasks, and sleep log with Google Gemini only when you request an analysis.</p><button id="run-analysis" class="button button-primary btn btn-primary" type="button">Analyze my progress <span aria-hidden="true">→</span></button><p id="analysis-message" class="analysis-message" role="status" aria-live="polite"></p></div></div><div id="analysis-result"></div></section>' : ""}
       <section class="tracking-section task-section">
-        <div class="list-heading"><div><p class="eyebrow">THE REST OF YOUR DAY</p><h3>${selectedDay === "yesterday" ? "Yesterday's tasks" : selectedDay === "tomorrow" ? "Tomorrow's tasks" : "Today's tasks"}</h3></div><span>${tasks.filter(task => task.completed).length} of ${tasks.length} done</span></div>
+        <div class="list-heading"><div><p class="eyebrow">THE REST OF YOUR DAY</p><h3>${selectedDay === "yesterday" ? `${escapeHtml(historyLabel)}'s tasks` : selectedDay === "tomorrow" ? "Tomorrow's tasks" : "Today's tasks"}</h3></div><span>${tasks.filter(task => task.completed).length} of ${tasks.length} done</span></div>
         ${taskForm()}
-        <div class="task-list">${tasks.length ? tasks.map(taskCard).join("") : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">+</span><p>No tasks yet. Add one above to make it easy to find.</p></div>'}</div>
+        <div class="task-list">${tasks.length ? tasks.map(task => taskCard(task, selectedDay === "yesterday")).join("") : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">+</span><p>No tasks yet. Add one above to make it easy to find.</p></div>'}</div>
       </section>
       <section class="bits-section">
-        <div class="list-heading"><h3>${selectedDay === "yesterday" ? "Yesterday's Bits" : selectedDay === "tomorrow" ? "Tomorrow's plan" : "Today's Bits"}</h3><span>${bits.length ? `${bits.length} ${bits.length === 1 ? "action" : "actions"}` : "A clean slate"}</span></div>
-        <div id="bits-list" class="bits-list">${bits.length ? bits.map(bit => bitCard(bit, selectedDay === "yesterday")).join("") : emptyState(selectedDay)}</div>
+        <div class="list-heading"><h3>${selectedDay === "yesterday" ? `${escapeHtml(historyLabel)}'s Bits` : selectedDay === "tomorrow" ? "Tomorrow's plan" : "Today's Bits"}</h3><span>${bits.length ? `${bits.length} ${bits.length === 1 ? "action" : "actions"}` : "A clean slate"}</span></div>
+        <div id="bits-list" class="bits-list">${bits.length ? bits.map(bit => bitCard(bit, selectedDay === "yesterday")).join("") : emptyState(selectedDay, historyLabel)}</div>
       </section>
       <section class="tracking-section sleep-section">
-        <div class="list-heading"><div><p class="eyebrow">REST IS PART OF PROGRESS</p><h3>${selectedDay === "tomorrow" ? "Plan your sleep" : `${dayLabel}'s sleep`}</h3></div>${sleep?.hours !== undefined ? `<span>${formatAmount(sleep.hours)} hours recorded</span>` : ""}</div>
+        <div class="list-heading"><div><p class="eyebrow">REST IS PART OF PROGRESS</p><h3>${selectedDay === "tomorrow" ? "Plan your sleep" : `${escapeHtml(historyLabel)}'s sleep`}</h3></div>${sleep?.hours !== undefined ? `<span>${formatAmount(sleep.hours)} hours recorded</span>` : ""}</div>
+        ${sleepChart(sleepHistory, sleepHistoryEnd)}
         ${sleepForm(sleep)}
       </section>
       ${selectedDay === "yesterday" ? '<button id="plan-today" class="button button-primary btn btn-primary" type="button">Carry it into today <span aria-hidden="true">→</span></button>' : addBitForm()}
@@ -294,6 +399,11 @@ async function renderCycle() {
     bindAddBitForm(dayDate);
     bindTaskControls(dayDate);
     bindSleepForm(dayDate);
+    document.querySelector("#history-date")?.addEventListener("change", event => {
+      if (!event.currentTarget.value) return;
+      historicalDate = new Date(`${event.currentTarget.value}T12:00:00`);
+      renderCycle();
+    });
     document.querySelector("#plan-today")?.addEventListener("click", () => tabs[1].click());
     document.querySelector("#run-analysis")?.addEventListener("click", () => loadProgressAnalysis(dayDate));
     return true;
@@ -351,9 +461,9 @@ function bitCard(bit, reflectionMode) {
     </article>`;
 }
 
-function emptyState(day) {
+function emptyState(day, historyLabel = "Yesterday") {
   const message = day === "yesterday"
-    ? "No Bits were planned yesterday. That's part of the picture, too."
+    ? `No Bits were planned on ${escapeHtml(historyLabel)}. That's part of the picture, too.`
     : day === "tomorrow"
       ? "Your next day starts with one small intention."
       : "Nothing planned yet. Choose one small thing that matters.";
@@ -364,12 +474,44 @@ function addBitForm() {
   return `<form id="add-bit-form" class="add-bit-form"><div class="add-bit-heading"><span class="add-mark" aria-hidden="true">+</span><div><h3>Add a Bit</h3><p>Make it specific enough to measure.</p></div></div><div class="add-bit-fields"><label class="sr-only" for="bit-title">Action</label><input id="bit-title" class="text-input form-control" name="title" maxlength="80" placeholder="e.g. Study networking" required /><label class="sr-only" for="bit-target">Planned amount</label><input id="bit-target" class="text-input form-control target-input" name="plannedAmount" type="number" min="0.1" step="0.1" placeholder="30" required /><label class="sr-only" for="bit-unit">Unit</label><select id="bit-unit" class="text-input form-control unit-input" name="unit"><option>minutes</option><option>pages</option><option>reps</option><option>glasses</option><option>sessions</option><option>times</option></select><button class="button button-primary btn btn-primary" type="submit">Add Bit <span aria-hidden="true">+</span></button></div></form>`;
 }
 
-function taskCard(task) {
-  return `<article class="task-row ${task.completed ? "task-row-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-row-main"><label class="task-check"><input class="task-toggle" type="checkbox" ${task.completed ? "checked" : ""} aria-label="Mark ${escapeHtml(task.title)} ${task.completed ? "incomplete" : "complete"}" /><span class="task-title ${task.completed ? "is-complete" : ""}">${escapeHtml(task.title)}</span></label><button class="icon-button delete-task btn btn-outline-danger" type="button" aria-label="Delete ${escapeHtml(task.title)}" title="Delete task">×</button></div>${task.completed ? `<div class="task-reflection"><label class="sr-only" for="task-reflection-${escapeHtml(task.id)}">Reflection for ${escapeHtml(task.title)}</label><textarea id="task-reflection-${escapeHtml(task.id)}" class="text-input form-control task-reflection-input" rows="2" maxlength="500" placeholder="What helped you get this done? What did you learn?">${escapeHtml(task.reflection || "")}</textarea><button class="button button-small save-task-reflection btn btn-warning" type="button">Save reflection</button></div>` : ""}</article>`;
+function taskCard(task, reflectionMode = false) {
+  const showReflection = reflectionMode || task.completed;
+  const reminderStatus = task.reminderSentAt
+    ? "Reminder sent"
+    : task.reminderSkippedAt
+      ? "Reminder unavailable"
+      : task.completed
+        ? "Due"
+        : "Email reminder";
+  const reminder = task.dueAt !== null && task.dueAt !== undefined && Number.isFinite(Number(task.dueAt))
+    ? `<small class="task-due">${reminderStatus} · ${escapeHtml(formatReminderTime(task.dueAt, task.dueTimeZone))}</small>`
+    : "";
+  return `<article class="task-row ${task.completed ? "task-row-complete" : ""}" data-task-id="${escapeHtml(task.id)}"><div class="task-row-main"><label class="task-check"><input class="task-toggle" type="checkbox" ${task.completed ? "checked" : ""} aria-label="Mark ${escapeHtml(task.title)} ${task.completed ? "incomplete" : "complete"}" /><span class="task-title ${task.completed ? "is-complete" : ""}">${escapeHtml(task.title)}</span></label><button class="icon-button delete-task btn btn-outline-danger" type="button" aria-label="Delete ${escapeHtml(task.title)}" title="Delete task">×</button></div>${reminder}${showReflection ? `<div class="task-reflection"><label class="sr-only" for="task-reflection-${escapeHtml(task.id)}">Reflection for ${escapeHtml(task.title)}</label><textarea id="task-reflection-${escapeHtml(task.id)}" class="text-input form-control task-reflection-input" rows="2" maxlength="500" placeholder="What helped or got in the way? What did you learn?">${escapeHtml(task.reflection || "")}</textarea><button class="button button-small save-task-reflection btn btn-warning" type="button">Save reflection</button></div>` : ""}</article>`;
 }
 
 function taskForm() {
-  return `<div class="task-entry"><form id="add-task-form" class="task-form"><label class="sr-only" for="task-title">New task</label><input id="task-title" class="text-input form-control" name="title" maxlength="120" placeholder="What do you want to get done?" required /><button class="button button-primary btn btn-primary" type="submit"><span class="task-submit-label"><span aria-hidden="true">+</span> Add task</span></button></form><p id="task-form-message" class="task-form-message" role="status" aria-live="polite"></p></div>`;
+  return `<div class="task-entry"><form id="add-task-form" class="task-form"><label class="sr-only" for="task-title">New task</label><input id="task-title" class="text-input form-control" name="title" maxlength="120" placeholder="What do you want to get done?" required /><label class="task-due-field" for="task-due-at"><span>Email reminder (optional)</span><input id="task-due-at" class="text-input form-control" name="dueAt" type="datetime-local" min="${localDateTimeValue()}" /><small>Sent to your account email if the task is still incomplete.</small></label><button class="button button-primary btn btn-primary" type="submit"><span class="task-submit-label"><span aria-hidden="true">+</span> Add task</span></button></form><p id="task-form-message" class="task-form-message" role="status" aria-live="polite"></p></div>`;
+}
+
+function localDateTimeValue(date = new Date()) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function formatReminderTime(timestamp, timeZone) {
+  const options = {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
+  };
+  try {
+    return new Intl.DateTimeFormat(undefined, options).format(new Date(Number(timestamp)));
+  } catch (error) {
+    console.warn("Invalid task reminder time zone; showing the browser's local time.", error);
+    delete options.timeZone;
+    return new Intl.DateTimeFormat(undefined, options).format(new Date(Number(timestamp)));
+  }
 }
 
 function sleepForm(sleep) {
@@ -450,9 +592,11 @@ function bindBitCards() {
 function bindTaskControls(dayDate) {
   const form = document.querySelector("#add-task-form");
   const input = form.elements.title;
+  const dueInput = form.elements.dueAt;
   const submitButton = form.querySelector("button[type='submit']");
   const submitLabel = submitButton.querySelector(".task-submit-label");
   const formMessage = document.querySelector("#task-form-message");
+  dueInput.addEventListener("input", () => dueInput.setCustomValidity(""));
   form.addEventListener("submit", async event => {
     event.preventDefault();
     const title = input.value.trim();
@@ -462,17 +606,29 @@ function bindTaskControls(dayDate) {
       return;
     }
     input.setCustomValidity("");
+    const dueAt = dueInput.value ? new Date(dueInput.value).getTime() : null;
+    if (dueInput.value && (!Number.isFinite(dueAt) || dueAt <= Date.now())) {
+      dueInput.setCustomValidity("Choose a future date and time for the reminder.");
+      dueInput.reportValidity();
+      return;
+    }
+    dueInput.setCustomValidity("");
     submitButton.disabled = true;
     submitButton.setAttribute("aria-busy", "true");
     submitLabel.textContent = "Adding task...";
     formMessage.textContent = "Saving your task.";
     try {
-      await set(push(ref(db, userPath("tasks"))), {
+      const task = {
         title,
-        date: dateKey(dayDate),
+        date: dateKey(dueAt === null ? dayDate : new Date(dueAt)),
         completed: false,
         createdAt: serverTimestamp(),
-      });
+      };
+      if (dueAt !== null) {
+        task.dueAt = dueAt;
+        task.dueTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      }
+      await set(push(ref(db, userPath("tasks"))), task);
       const dashboardLoaded = await renderCycle();
       if (!dashboardLoaded) {
         document.querySelector("#task-form-message").textContent = "Task saved. Fix the Firebase data issue above to load your task history.";

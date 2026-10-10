@@ -13,6 +13,11 @@
           ".indexOn": ["date"]
         }
       }
+    },
+    "taskReminders": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["dueAt"]
     }
   }
 }

@@ -1,22 +1,22 @@
 # TrackBit
 
-TrackBit is a personal behavior-learning app built around **Yesterday → Today → Tomorrow**. Each Bit has a planned amount and an actual amount; users can record what got in the way and carry useful patterns into a more realistic plan. Sleep logs show a rolling 14-day chart, and the Yesterday view can browse earlier dates for reflection.
+TrackBit is a personal behavior-learning app built around **Yesterday → Today → Tomorrow**. Each Bit has a planned amount and an actual amount; users can record what got in the way and carry useful patterns into a more realistic plan. The Yesterday view connects task completion and Bit outcomes with a private daily diary and an optional AI reflection assistant. Sleep logs show a rolling 14-day chart, and the Yesterday view can browse earlier dates.
 
 ## Stack
 
 - HTML, CSS, and browser JavaScript modules
-- PHP 8.2+ for the web server and authenticated insight endpoint
+- PHP 8.2+ for the web server and authenticated Gemini endpoints
 - Firebase Authentication and Realtime Database
 - Firebase Cloud Functions for scheduled task reminder emails
 - Resend for email delivery to the user's account email
-- Google Gemini API for optional, user-requested progress analysis through PHP
+- Google Gemini API for optional, user-requested progress analysis and reflection assistance through PHP
 
 ## Firebase setup
 
 1. Create a Firebase project and register a Web app.
 2. Enable **Authentication → Email/Password** and **Authentication → Google**, add your development/production hostnames under **Authentication → Settings → Authorized domains**, and create a Realtime Database.
-3. Copy the Web app configuration into `src/firebase-config.js`. The web API key is public; RTDB rules protect each user's data.
-4. In Realtime Database Rules, publish the contents of `database.rules.json`.
+3. Copy the Web app configuration into `src/firebase-config.js`. The web API key is public; Realtime Database rules restrict each user's data to that user.
+4. Publish the Realtime Database rules from `database.rules.json` with `firebase deploy --only database`.
 5. Configure `FIREBASE_DATABASE_URL` and `GEMINI_API_KEY` in the PHP server environment. Keep the Gemini key server-side and out of browser JavaScript.
 
 ## Run locally
@@ -28,7 +28,7 @@ cp .env.example .env
 php -S 127.0.0.1:8000 router.php
 ```
 
-Open <http://127.0.0.1:8000>. The Tomorrow tab asks before sending the last seven days of Bits, tasks, and sleep entries to Gemini. Without the server-side environment values, tracking still works and analysis displays a setup message.
+Open <http://127.0.0.1:8000>. The Tomorrow tab asks before sending the last seven days of Bits, tasks, and sleep entries to Gemini. On the Yesterday tab, the reflection assistant sends the selected day's task and Bit history, the note text in the diary box, and the conversation only when the user submits a question. Diary notes are saved to the user's private Realtime Database account; assistant conversations are not saved by TrackBit. Tasks added while browsing a past date are recorded for that date and do not offer email reminders. Without the server-side environment values, tracking and diary notes still work, while AI features show a setup message.
 
 ## Data and privacy
 
@@ -37,11 +37,13 @@ All records are private to `users/{uid}`. Bits and tasks use push IDs so repeate
 ```text
 users/{uid}/
 	bits/{pushId}: { date, title, unit, plannedAmount, actualAmount, reason, reflection, createdAt, updatedAt }
-	tasks/{pushId}: { date, title, completed, dueAt?, dueTimeZone?, reminderSentAt?, createdAt, completedAt }
+	tasks/{pushId}: { date, title, completed, status?, dueAt?, dueTimeZone?, reminderSentAt?, createdAt, completedAt }
 	sleep/{YYYY-MM-DD}: { date, hours, targetHours, quality, updatedAt }
+	reflections/{YYYY-MM-DD}: { note, updatedAt }
+	profilePhoto: "data:image/jpeg;base64,..."
 ```
 
-`date` uses local `YYYY-MM-DD`. `actualAmount`, `hours`, and `quality` are optional until recorded; `targetHours` is for a future sleep plan. `database.rules.json` restricts access to the signed-in owner and indexes Bits/tasks by date. The PHP insight endpoint uses the user's Firebase ID token to query only that user's recent records before sending a bounded summary to Gemini. Analysis is sent only after the user clicks the button.
+`date` uses local `YYYY-MM-DD`. `actualAmount`, `hours`, and `quality` are optional until recorded; `targetHours` is for a future sleep plan. The Yesterday dashboard has separate History and Add History tabs. An entry can include a date, title, description, and done, pending, or skipped status. History dates must be real calendar dates no later than today; valid older dates (including dates such as April 23, 1975) are allowed. The Add History form can use the device camera to scan a written note with in-browser English OCR; the user reviews and edits recognized fields before saving. The image is processed in the browser and is not saved or uploaded by TrackBit. The OCR library and English language data are downloaded by the browser on the first scan, and camera access requires browser permission and a secure context (HTTPS or localhost). Skipped tasks are excluded from email reminders. Profile pictures are cropped and compressed in the browser to a small JPEG data URL, then saved under the user's existing Realtime Database record; this avoids requiring Firebase Storage. `database.rules.json` restricts access to the signed-in owner and indexes Bits/tasks by date. Both PHP Gemini endpoints use the user's Firebase ID token to query only that user's records. Weekly analysis is sent only after the user clicks its button. Reflection assistant requests include only the selected day's task and Bit history, diary text currently in the journal, and conversation, and are sent only when the user submits a question.
 
 ## Task reminder emails
 

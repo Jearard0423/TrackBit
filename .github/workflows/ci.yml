@@ -21,10 +21,26 @@ jobs:
         with:
           php-version: "8.2"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Cloud Functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/app.js
+          npm --prefix functions run lint
+
       - name: Check PHP syntax
         run: |
           php -l router.php
           php -l api/insights.php
+          php -l api/reflection.php
 
-      - name: Validate Firebase rules JSON
-        run: php -r 'json_decode(file_get_contents("database.rules.json"), true, 512, JSON_THROW_ON_ERROR);'
+      - name: Validate Firebase configuration
+        run: |
+          php -r 'json_decode(file_get_contents("firebase.json"), true, 512, JSON_THROW_ON_ERROR);'
+          php -r 'json_decode(file_get_contents("database.rules.json"), true, 512, JSON_THROW_ON_ERROR);'

@@ -20,9 +20,28 @@
           <span class="brand-logo-window"><img class="brand-logo" src="/trackbit-logo.png" alt="TrackBit" /></span>
         </a>
         <div id="account-actions" class="account-actions" hidden>
-          <span id="account-email" class="account-email"></span>
-          <button id="profile-open" class="button button-quiet btn btn-outline-secondary" type="button">Edit profile</button>
-          <button id="sign-out" class="button button-quiet sign-out-button btn btn-outline-secondary" type="button"><span aria-hidden="true">↪</span> Sign out</button>
+          <div id="account-menu" class="account-menu">
+            <button id="account-menu-toggle" class="account-menu-toggle" type="button" aria-label="Open account menu" aria-expanded="false" aria-controls="account-menu-panel">
+              <span class="account-menu-avatar"><img id="profile-avatar" alt="" hidden /><span id="profile-avatar-fallback" aria-hidden="true">T</span></span>
+              <svg class="menu-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <section id="account-menu-panel" class="account-menu-panel" aria-label="Account menu" hidden>
+              <div class="account-menu-identity">
+                <strong id="account-menu-name">Your profile</strong>
+                <span id="account-email"></span>
+              </div>
+              <button id="profile-open" class="account-menu-item" type="button">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.6-3.1 3.1-5 7-5s6.4 1.9 7 5M18 5h3m-1.5-1.5v3" /></svg>
+                <span>Edit profile</span>
+              </button>
+              <button id="sign-out" class="account-menu-item sign-out-button" type="button">
+                <svg class="sign-out-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+                </svg>
+                <span>Sign out</span>
+              </button>
+            </section>
+          </div>
         </div>
       </header>
 
@@ -110,15 +129,56 @@
         <p id="app-message" class="app-message" role="status" aria-live="polite"></p>
       </main>
 
-      <dialog id="profile-dialog" class="account-dialog" aria-labelledby="profile-title">
-        <form id="profile-form" class="dialog-form">
-          <div class="dialog-heading"><p class="eyebrow">YOUR ACCOUNT</p><h2 id="profile-title">Edit profile</h2><p>Choose the name you want TrackBit to use when it greets you.</p></div>
-          <label class="field-label" for="profile-name">Display name</label>
-          <input id="profile-name" class="text-input form-control" name="displayName" maxlength="60" autocomplete="name" required />
-          <label class="field-label" for="profile-email">Email address</label>
-          <input id="profile-email" class="text-input form-control" type="email" readonly />
+      <dialog id="profile-dialog" class="account-dialog profile-dialog" aria-labelledby="profile-title">
+        <form id="profile-form" class="dialog-form profile-dialog-form">
+          <div class="profile-cover" aria-hidden="true"></div>
+          <section class="profile-identity" aria-label="Profile picture and name">
+            <div class="profile-photo-preview">
+              <img id="profile-photo-current" alt="Current profile picture" hidden />
+              <span id="profile-photo-fallback" aria-hidden="true">T</span>
+            </div>
+            <div class="profile-identity-copy">
+              <p class="eyebrow">YOUR ACCOUNT</p>
+              <h2 id="profile-title">Edit profile</h2>
+              <p id="profile-public-name">Your profile name</p>
+            </div>
+            <div class="profile-photo-controls">
+              <div class="profile-photo-actions">
+                <button id="profile-photo-choose" class="button button-quiet btn btn-outline-secondary" type="button">Change photo</button>
+                <button id="profile-camera-open" class="button button-quiet btn btn-outline-secondary" type="button">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h-4l-1.5 2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.5L14 4Z" /><circle cx="12" cy="13" r="3.5" /></svg>
+                  Camera
+                </button>
+              </div>
+              <input id="profile-photo-file" class="sr-only" type="file" accept="image/*" />
+            </div>
+          </section>
+          <section class="profile-created" aria-labelledby="profile-created-label">
+            <span id="profile-created-label">Account created</span>
+            <strong id="profile-created-date">—</strong>
+          </section>
+          <section class="profile-public-section" aria-labelledby="profile-public-label">
+            <div>
+              <h3 id="profile-public-label">Public profile name</h3>
+              <p>This is the name shown on your profile.</p>
+            </div>
+            <label class="sr-only" for="profile-name">Public profile name</label>
+            <input id="profile-name" class="text-input form-control" name="displayName" maxlength="60" autocomplete="name" required />
+          </section>
+          <section id="profile-crop-panel" class="profile-crop-panel" aria-label="Crop profile picture" hidden>
+            <canvas id="profile-crop-canvas" width="280" height="280" tabindex="0" aria-label="Adjust the photo crop with arrow keys or by dragging"></canvas>
+            <label class="profile-zoom-control" for="profile-crop-zoom"><span>Zoom</span><input id="profile-crop-zoom" type="range" min="1" max="3" step="0.01" value="1" /></label>
+            <button id="profile-crop-cancel" class="text-button" type="button">Discard photo</button>
+          </section>
+          <section id="profile-camera-panel" class="profile-camera-panel" aria-label="Take profile picture" hidden>
+            <video id="profile-camera-video" autoplay playsinline muted></video>
+            <div class="profile-photo-actions">
+              <button id="profile-camera-capture" class="button button-primary btn btn-primary" type="button">Take photo</button>
+              <button id="profile-camera-close" class="button button-quiet btn btn-outline-secondary" type="button">Close camera</button>
+            </div>
+          </section>
           <p id="profile-message" class="dialog-message" role="status" aria-live="polite"></p>
-          <div class="dialog-actions"><button id="profile-cancel" class="button button-quiet btn btn-outline-secondary" type="button">Cancel</button><button id="profile-save" class="button button-primary btn btn-primary" type="submit">Save profile</button></div>
+          <div class="dialog-actions"><button id="profile-cancel" class="button button-quiet btn btn-outline-secondary" type="button">Cancel</button><button id="profile-save" class="button button-primary btn btn-primary" type="submit" hidden>Save profile</button></div>
         </form>
       </dialog>
 

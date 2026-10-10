@@ -20,6 +20,7 @@ function reminderIndexKey(uid, taskId) {
 function isReminderEligible(task) {
   return task
     && task.completed !== true
+    && task.status !== "skipped"
     && !task.reminderSentAt
     && !task.reminderSkippedAt
     && Number.isFinite(task.dueAt)
